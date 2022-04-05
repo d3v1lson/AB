@@ -1,0 +1,1022 @@
+------------------------------1.ZH------------------------------
+
+1.Márkák szerint hány autótípus van? A listát rendezze márka szerint!
+SELECT marka, COUNT(*)
+    FROM SZERELO.sz_autotipus
+    GROUP BY marka
+    ORDER BY marka;
+
+2.Kik dolgoznak/dolgoztak egri szerelőműhelyben (amelynek a címe úgy kezdődik, hogy 'Eger')?
+SELECT sz.nev
+    FROM SZERELO.SZ_SZERELOMUHELY szm, SZERELO.SZ_DOLGOZIK d, SZERELO.SZ_SZERELO sz
+    WHERE sz.azon = d.szerelo_azon AND d.muhely_azon = szm.azon
+    AND szm.cim LIKE 'Eger%';     
+
+3.Listázza ki a 'Beetle' és a 'Bora' típusú autók rendszámát!
+SELECT a.rendszam
+    FROM SZERELO.SZ_AUTO a, SZERELO.SZ_AUTOTIPUS at
+    WHERE a.tipus_azon = at.azon
+    AND at.megnevezes IN('Beetle','Bora');
+
+4.Mekkora értékben végeztek összesen szerelési munkákat az egyes autókon? A listában az autókat az azonosítójukkal adja meg! Rendezze az eredményt az összes munkavégzés költsége szerint növekvő sorrendbe!
+SELECT sz.auto_azon, SUM(sz.munkavegzes_ara) ar
+    FROM SZERELO.SZ_SZERELES sz, SZERELO.SZ_AUTO a
+    WHERE sz.auto_azon = a.azon
+    GROUP BY sz.auto_azon
+    ORDER BY ar;
+
+5.Listázza ki azon autók rendszámait, amelyek első vásárlási ára kisebb, mint a kék autók első vásárlási árainak az átlaga!
+SELECT rendszam
+    FROM SZERELO.SZ_AUTO
+    WHERE elso_vasarlasi_ar <
+    (
+        SELECT AVG(elso_vasarlasi_ar)
+            FROM SZERELO.SZ_AUTO
+            WHERE szin = 'kék'
+    );
+
+6.Listázza ki a műhelyazonosítókat és az ott valaha dolgozó szerelők összfizetését az utóbbi szerint csökkenő sorrendben!
+SELECT szm.azon, SUM(d.havi_fizetes)
+    FROM SZERELO.SZ_SZERELOMUHELY szm, SZERELO.SZ_DOLGOZIK d
+    WHERE szm.azon = d.muhely_azon
+    GROUP BY szm.azon
+    ORDER BY SUM(d.havi_fizetes) DESC;
+
+7.írja ki a 178-as azonosítójú autó első tulajdonosának a nevét!
+SELECT t.nev
+    FROM SZERELO.SZ_TULAJDONOS t, SZERELO.SZ_AUTO_TULAJDONOSA at, SZERELO.SZ_AUTO a
+    WHERE t.azon = at.tulaj_azon AND at.auto_azon = a.azon
+    AND at.auto_azon = '178'
+    ORDER BY a.elso_vasarlas_idopontja
+    FETCH FIRST ROW ONLY;
+
+8.Listázza ki a sportos kivitelű, ködfényszóróval rendelkező autótípusok márkáját és megnevezését egy szóközzel elválasztva! Ezeknek a típusoknak a leírásában szerepel a 'sportos kivitel', illetve a 'ködfényszóró' sztring. A lista legyen a márka szerint csökkenő, azon belül a megnevezés szerint szintén csökkenö sorrendbe rendezve!
+SELECT marka || ' ' || megnevezes
+    FROM szerelo.sz_autotipus
+    WHERE leiras LIKE '%sportos kivitel%' AND leiras LIKE '%ködfényszóró%'
+    ORDER BY marka DESC, megnevezes DESC;
+
+9.Listázza ki az 500 eFt-nál kisebb értékű autófelértékelések adatait a dátumaik szerint növekvő sorrendbe rendezve!
+SELECT af.*
+    FROM SZERELO.SZ_AUTOFELERTEKELES af
+    WHERE ertek < 500000
+    ORDER BY to_char(datum, 'yyyy.mm.dd');
+
+10.Listázza ki azoknak az autóknak a rendszámát és első vásárlási időpontját, amelyeket 2011-ben, 2009-ben vagy 2005-ben vásároltak meg előszőr
+SELECT a.rendszam, a.elso_vasarlas_idopontja
+    FROM SZERELO.SZ_AUTO a
+    WHERE extract(year FROM a.elso_vasarlas_idopontja) = '2011' OR
+          extract(year FROM a.elso_vasarlas_idopontja) = '2009' OR
+          extract(year FROM a.elso_vasarlas_idopontja) = '2005';
+
+11.Listázza ki azoknak az autófelértékeléseknek az adatait, amelyek értéke legalább 1 MFt-tal meghaladja az átlagot!
+SELECT af.*
+    FROM SZERELO.SZ_AUTOFELERTEKELES af
+    WHERE af.ertek >
+    (SELECT AVG(ertek)
+        FROM SZERELO.SZ_AUTOFELERTEKELES
+    )+1000000;
+
+12.Melyek azok az autók, amelyeket 4-nél többször szereltek? Az autókat az azonosítójukkal adja meg, rendezve!
+SELECT auto_azon
+    FROM SZERELO.SZ_SZERELES
+    HAVING COUNT(*) >4
+    GROUP BY auto_azon
+    ORDER BY auto_azon;
+
+13.Listázza ki azoknak az autótípusoknak az adatait, amelyek nem 5 ajtósak (az '5 ajtós' sztring nem szerepel a leírásukban), és a márkanevük ugyanolyan betűvel kezdődik, mint a megnevezésük!
+SELECT atip.*
+    FROM SZERELO.SZ_AUTOTIPUS atip
+    WHERE leiras NOT LIKE '%5 ajtós%'
+    AND substr(marka,1,1) = substr(megnevezes,1,1);
+
+14.Mikor vásárolták az első autójukat az egyes tulajdonosok? A listában a tulajdonosokat az azonosítójukkal adja meg! Rendezze az eredményt az első vásárlások dátuma szerint csökkenő sorrendbe!
+SELECT atul.tulaj_azon, MIN(to_char(a.elso_vasarlas_idopontja,'yyyy.mm.dd')) datum
+    FROM SZERELO.SZ_AUTO_TULAJDONOSA atul, SZERELO.SZ_AUTO a
+    WHERE atul.auto_azon = a.azon
+    GROUP BY atul.tulaj_azon
+    ORDER BY datum DESC;
+
+15.Kik melyik autót vásárolták meg 2003-ban? A tulajdonosokat a nevükkel, az autókat a rendszámukkal adja meg! Az eredményt rendezze a tulajdonosok szerint ábécérendbe!
+SELECT t.nev, a.rendszam
+    FROM SZERELO.SZ_TULAJDONOS t, SZERELO.SZ_AUTO_TULAJDONOSA atul, SZERELO.SZ_AUTO a
+    WHERE t.azon = atul.tulaj_azon AND
+          atul.auto_azon = a.azon AND
+          to_char(extract(year FROM atul.vasarlas_ideje)) = '2003'
+    ORDER BY t.nev;
+
+16.Listázza ki azoknak az autóknak a rendszámát és színét, amelyeket a legrövidebb ideig szereltek (és a szerelést már befejezték)!
+SELECT a.rendszam, a.szin
+    FROM SZERELO.SZ_AUTO a, SZERELO.SZ_SZERELES sz
+    WHERE a.azon = sz.auto_azon
+    AND to_date(szereles_vege,'yyyy.mm.dd')-to_date(szereles_kezdete,'yyyy.mm.dd') IN
+    (
+        SELECT MIN(to_date(szereles_vege,'yyyy.mm.dd')-to_date(szereles_kezdete,'yyyy.mm.dd')) nap
+        FROM SZERELO.SZ_SZERELES
+        WHERE szereles_vege IS NOT NULL
+        GROUP BY auto_azon
+        ORDER BY nap
+        FETCH FIRST ROW WITH TIES
+    );
+
+17.Mely márkákhoz tartozik 7-nél több autótípus?
+SELECT am.nev
+    FROM SZERELO.SZ_AUTOMARKA am, SZERELO.SZ_AUTOTIPUS atip
+    WHERE am.nev = atip.marka
+    HAVING COUNT(*) > 7
+    GROUP BY am.nev;
+
+18.Mikor (mettől meddig) és mennyiért szerelték/szerelik az 'ABC201' rendszámú autót?
+SELECT sz.szereles_kezdete, sz.szereles_vege, sz.munkavegzes_ara
+    FROM szerelo.sz_szereles sz, szerelo.sz_auto a
+    WHERE sz.auto_azon = a.azon AND
+          a.rendszam = 'ABC201';
+
+19.Listázza ki azon autók rendszámait, amelyek első vásárlási ára kisebb,mint a kék autók első vásárlási árainak az átlaga!
+SELECT rendszam
+    FROM SZERELO.SZ_AUTO
+    WHERE elso_vasarlasi_ar <
+    ( 
+        SELECT AVG(elso_vasarlasi_ar)
+            FROM SZERELO.SZ_AUTO
+            WHERE szin = 'kék'
+    );
+
+20. Listázza ki azoknak a debreceni autótulajdonosoknak az azonosítóját és nevét, akiknek a neve legfeljebb 10 karakter hosszúságú! A debreceni tulajdonosok címe úgy kezdődik, hogy 'Debrecen'. A lista név szerint legyen növekvően rendezett!
+SELECT t.azon, t.nev
+    FROM SZERELO.SZ_TULAJDONOS t
+    WHERE t.cim LIKE 'Debrecen%'
+    AND length(nev) <= 10
+    ORDER BY t.nev;
+
+21.Listázza ki a műhelyazonosítókat és az ott valaha dolgozó szerelők összfizetését az utóbbi szerint csökkenő sorrendben!
+SELECT szm.azon, SUM(d.havi_fizetes)
+    FROM SZERELO.SZ_SZERELOMUHELY szm, SZERELO.SZ_DOLGOZIK d
+    WHERE szm.azon = d.muhely_azon
+    GROUP BY szm.azon
+    ORDER BY SUM(d.havi_fizetes) DESC;
+
+22.Írja ki a 172-es azonosítójú autó utolsó tulajdonosának a nevét!
+SELECT t.nev
+    FROM SZERELO.SZ_AUTO_TULAJDONOSA at, SZERELO.SZ_TULAJDONOS t
+    WHERE at.tulaj_azon = t.azon
+    AND at.auto_azon = '172'
+    ORDER BY at.vasarlas_ideje DESC
+    FETCH FIRST ROW ONLY;
+
+23.A 103-as azonosítójú műhelyben hányszor szereltek/szerelnek egy-egy autót, és mennyi volt az adott autón végzett munkák átlagos ára? A listában az autókat az azonosítójukkal adja meg! Rendezze a listát a munkavégzések átlagára szerint növekvő sorrendbe!
+SELECT sz.auto_azon, AVG(sz.munkavegzes_ara) atl, COUNT(*) db
+    FROM SZERELO.sz_szereles sz
+    WHERE sz.muhely_azon = 103
+    GROUP BY sz.auto_azon
+    ORDER BY atl;
+
+24.Melyik szerelőknek volt az eddigi legnagyobb fizetése több, mint 180 eFt? A szerelőket az azonosítójukkal adja meg!
+SELECT szerelo_azon
+    FROM SZERELO.SZ_DOLGOZIK
+    HAVING MAX(HAVI_FIZETES) > 180000
+    GROUP BY szerelo_azon;
+
+25.Listázza ki azon autók rendszámait, amelyek első vásárlási ára kisebb, mint az 1998 és 2003 között újonnan vásárolt autók első vásárlási árainak az átlaga!
+SELECT rendszam
+    FROM SZERELO.SZ_AUTO
+    WHERE elso_vasarlasi_ar <
+    ( 
+        SELECT AVG(elso_vasarlasi_ar)
+            FROM SZERELO.SZ_AUTO
+            WHERE extract(year from elso_vasarlas_idopontja) BETWEEN 1998 AND 2003
+    );
+
+26.Listázza ki, hogy átlagosan mennyire értékelték az egyes autótípusokhoz tartozó autókat 2001-ben! Az autótípusokat az azonosítójukkal adja meg! A lista átlagár szerint növekvő sorrendbe legyen rendezve!
+SELECT a.tipus_azon, AVG(ertek) ertek
+    FROM SZERELO.SZ_AUTO a, SZERELO.SZ_AUTOFELERTEKELES af
+    WHERE a.azon = af.auto_azon
+    AND extract(year from af.datum) = 2001
+    GROUP BY a.tipus_azon
+    ORDER BY ertek;
+
+27.Melyik szerelőknek volt az eddigi legnagyobb fizetése több, mint 180 eFt? 
+SELECT szerelo_azon
+    FROM SZERELO.SZ_DOLGOZIK
+    HAVING MAX(HAVI_FIZETES) > 180000
+    GROUP BY szerelo_azon;
+
+28.Melyek azok az autók, amelyeket 10 MFt-nál többre értékeltek, mekkora volt ez az érték, és mikor történt a felértékelés? Az autókat a rendszámukkal adja meg!
+SELECT rendszam, ertek, datum
+    FROM SZERELO.sz_autofelertekeles af, SZERELO.sz_auto a
+    WHERE af.auto_azon = a.azon AND
+          ertek > 10000000;
+
+29.Írja ki a 150-es azonosítóval rendelkező autó rendszámát, színét és első vásárlási árát!
+SELECT rendszam, szin, elso_vasarlasi_ar
+    FROM SZERELO.SZ_AUTO
+    WHERE azon = 150;
+
+30.Listázza ki azoknak az autóknak az azonosítóit a napokban mért szerelési idejükkel együtt, amelyeket több, mint 30 napig szereltek! Rendezze az eredményt a szerelési idő szerint csökkenő sorrendbe!
+SELECT auto_azon, to_date(szereles_vege,'yyyy.mm.dd')-to_date(szereles_kezdete,'yyyy.mm.dd') nap
+    FROM SZERELO.SZ_SZERELES 
+    WHERE to_date(szereles_vege,'yyyy.mm.dd')-to_date(szereles_kezdete,'yyyy.mm.dd') > 30
+    GROUP BY auto_azon, to_date(szereles_vege,'yyyy.mm.dd')-to_date(szereles_kezdete,'yyyy.mm.dd')
+    ORDER BY nap DESC;
+
+31.Listázza ki azoknak a 10 karakternél hosszabb nevű tulajdonosoknak az adatait, akiknek nem ismert a lakcíme! A lista legyen név szerint rendezve!
+SELECT *
+    FROM SZERELO.SZ_TULAJDONOS
+    WHERE length(nev) > 10
+    AND cim IS NULL
+    ORDER BY nev;
+
+32.Hol, azaz milyen nevű szerelőműhelyekben dolgoznak/dolgoztak az egri szerelők (akiknek a címe úgy kezdődik, hogy 'Eger')? Minden munkahely csak egyszer szerepeljen!
+SELECT szm.nev
+    FROM SZERELO.SZ_SZERELO sz, SZERELO.SZ_DOLGOZIK d, SZERELO.SZ_SZERELOMUHELY szm
+    WHERE sz.azon = d.szerelo_azon AND d.muhely_azon = szm.azon
+    AND sz.cim LIKE 'Eger%'
+    GROUP BY szm.nev;
+
+33.Listázza ki azoknak az autófelértékeléseknek az adatait, amelyek értéke legalább 1,5 MFt-tal kisebb az átlagnál!
+SELECT *
+    FROM SZERELO.SZ_AUTOFELERTEKELES
+    WHERE ertek-1500000 <
+    ( SELECT AVG(ertek)
+         FROM SZERELO.SZ_AUTOFELERTEKELES
+    );
+
+34.Listázza ki, hogy átlagosan mennyire értékelték az egyes autótípusokhoz tartozó autókat! Az autótípusokat az azonosítójukkal adja meg!
+SELECT atip.azon, AVG(af.ertek)
+    FROM SZERELO.SZ_AUTOTIPUS atip, SZERELO.SZ_AUTO a, SZERELO.SZ_AUTOFELERTEKELES af
+    WHERE atip.azon = a.tipus_azon AND a.azon = af.auto_azon
+    GROUP BY atip.azon;
+
+35.Mekkora a különbség a legnagyobb és a legkisebb érték között, amelyekre az egyes autókat felértékelték? A listában az autókat az azonosítójukkal adja meg! Rendezze az eredményt az értékkülönbség szerint csökkenő sorrendbe!
+SELECT auto_azon, MAX(ertek)-MIN(ertek) dif
+    FROM SZERELO.sz_autofelertekeles
+    GROUP BY auto_azon
+    ORDER BY dif DESC;
+
+36.A debreceni lakcímű dolgozók (akiknek a címe úgy kezdődik, hogy 'Debrecen') az egyes években mekkora átlagos havi fizetésért vállaltak munkát? Rendezze az eredményt év szerint csökkenő sorrendbe!
+SELECT extract(year from d.munkaviszony_kezdete) kezdete, AVG(d.havi_fizetes) fizu
+    FROM SZERELO.SZ_SZERELO sz, SZERELO.SZ_DOLGOZIK d
+    WHERE sz.azon = d.szerelo_azon
+    AND sz.cim LIKE 'Debrecen%'
+    GROUP BY extract(year from d.munkaviszony_kezdete)
+    ORDER BY kezdete DESC;
+
+37.Listázza ki ábécérendben azoknak az autóknak a rendszámát és első vásárlási időpontját, amelyeket 2011-ben vásároltak meg először!
+SELECT rendszam, elso_vasarlas_idopontja
+    FROM SZERELO.SZ_AUTO
+    WHERE extract(year from elso_vasarlas_idopontja) = 2011
+    ORDER BY rendszam, elso_vasarlas_idopontja;
+
+38.Mely szerelőknek volt eddig kettőnél több munkahelye? A szerelőket az azonosítójukkal adja meg!
+SELECT szerelo_azon
+    FROM SZERELO.SZ_DOLGOZIK
+    GROUP BY szerelo_azon
+    HAVING count(*) > 2;
+ 
+39.Kik birtokolták a 'BBB230' rendszámú autót? A tulajdonosokat a nevükkel adja meg!
+SELECT t.nev
+    FROM SZERELO.SZ_TULAJDONOS t, SZERELO.SZ_AUTO_TULAJDONOSA at, SZERELO.SZ_AUTO a
+    WHERE t.azon = at.tulaj_azon AND at.auto_azon = a.azon
+    AND a.rendszam = 'BBB230';
+    
+40.Írja ki annak a szerelőműhelynek a nevét és címét, amelyiknek a vezetője a 301-es azonosítóval rendelkezik!
+SELECT nev, cim
+    FROM SZERELO.SZ_SZERELOMUHELY
+    WHERE vezeto_azon = 301;
+    
+41.Mikor (mettől meddig) és mennyiért szerelték/szerelik az 'ABC201' rendszámú autót?
+SELECT sz.SZERELES_KEZDETE, sz.SZERELES_VEGE, sz.munkavegzes_ara
+    FROM SZERELO.SZ_SZERELES sz, SZERELO.SZ_AUTO a
+    WHERE sz.auto_azon = a.azon
+    AND a.rendszam = 'ABC201';
+    
+42.Mely autókat szereltek 800 eFt-nál nagyobb összértékben, és mekkora ez az összérték? Az autókat az azonosítójukkal adja meg!
+SELECT auto_azon, SUM(munkavegzes_ara)
+    FROM SZERELO.SZ_SZERELES
+    HAVING SUM(munkavegzes_ara) > 800000
+    GROUP BY auto_azon;
+    
+43.Mikor fejezték be az utolsó szerelést az egyes szerelőműhelyekben? A listában a műhelyeket az azonosítójukkal adja meg! Rendezze az eredményt az utolsó szerelések dátuma szerint csökkenő sorrendbe!
+SELECT muhely_azon, MAX(to_char(szereles_vege,'yyyy.mm.dd'))
+    FROM SZERELO.SZ_SZERELES
+    GROUP BY muhely_azon
+    ORDER BY MAX(to_char(szereles_vege,'yyyy.mm.dd')) DESC;
+    
+44.Listázza ki az autótulajdonosok adatait a nevük szerint növekvő sorrendben!
+SELECT *
+    FROM SZERELO.sz_tulajdonos
+    ORDER BY nev;
+    
+45.Listázza ki azoknak az autóknak a rendszámát és színét, amelyeket a legolcsóbbra értékeltek fel!
+SELECT a.rendszam, a.szin
+    FROM SZERELO.SZ_AUTO a, SZERELO.SZ_AUTOFELERTEKELES af
+    WHERE a.azon = af.auto_azon
+    AND ertek =
+    ( 
+        SELECT MIN(ertek)
+            FROM SZERELO.SZ_AUTOFELERTEKELES
+    );
+    
+46.Listázza ki a januárban, márciusban vagy májusban született szerelők nevét, telefonszámát és születési dátumát! A lista legyen a születési dátum hónapja, azon belül név szerint rendezve!
+SELECT nev, telefon, szul_dat
+    FROM SZERELO.SZ_SZERELO
+    WHERE extract(month from szul_dat) = 01 OR
+          extract(month from szul_dat) = 03 OR
+          extract(month from szul_dat) = 05
+    ORDER BY extract(month from szul_dat), nev;
+
+47.Listázza ki az autószíneket, és azt, hogy az adott színű autókat átlagosan mennyiért szerelték! A listát rendezze az átlagos munkavégzési ár szerint csökkenően!
+SELECT a.szin, AVG(munkavegzes_ara) ar
+    FROM SZERELO.SZ_AUTO a, SZERELO.SZ_SZERELES sz
+    WHERE a.azon = sz.auto_azon
+    GROUP BY a.szin
+    ORDER BY ar DESC;
+    
+48.Listázza ki azon munkaviszonyok kezdő időpontját és a hozzájuk tartozó havi fizetés értékét, amelyek legalább 9 év hosszúak és még nem értek véget (azaz a munkaviszony vége nincs megadva)!
+SELECT munkaviszony_kezdete, havi_fizetes
+    FROM SZERELO.sz_dolgozik
+    WHERE months_between(sysdate,munkaviszony_kezdete)/12>=9 AND
+          munkaviszony_vege IS NULL;
+    
+49.Listázza ki az utolsó autófelértékelésben részt vevő autó(k) rendszámát és színét!
+SELECT a.rendszam, a.szin
+    FROM SZERELO.SZ_AUTO a, SZERELO.SZ_AUTOFELERTEKELES af
+    WHERE a.azon = af.auto_azon
+    AND to_char(datum, 'yyyy.mm.dd') =
+    (
+        SELECT MAX(to_char(datum, 'yyyy.mm.dd'))
+            FROM SZERELO.SZ_AUTOFELERTEKELES
+    );
+    
+50.Listázza ki azoknak a szerelőknek az adatait, akik 20-as körzetszámú telefonszámmal rendelkeznek, azaz a telefonszámuk úgy kezdődik, hogy '+3620'! A lista legyen név szerint csökkenően rendezett!
+SELECT *
+    FROM SZERELO.SZ_SZERELO
+    WHERE telefon LIKE '+3620%'
+    ORDER BY nev DESC;
+    
+51.Listázza ki azon autók rendszámait, amelyek első vásárlási ára kisebb, mint az összes 1998 és 2003 között újonnan vásárolt autó első vásárlási ára!
+SELECT rendszam
+    FROM SZERELO.SZ_AUTO
+    WHERE elso_vasarlasi_ar < ALL
+    ( 
+        SELECT AVG(elso_vasarlasi_ar)
+            FROM SZERELO.SZ_AUTO
+            WHERE extract(year from elso_vasarlas_idopontja) BETWEEN 1998 AND 2003
+    );
+    
+52.Listázza ki a 'Fekete Zsófia' által valaha birtokolt autók rendszámait!
+SELECT a.rendszam
+    FROM SZERELO.sz_auto a, SZERELO.sz_tulajdonos t, SZERELO.sz_auto_tulajdonosa at
+    WHERE at.auto_azon = a.azon AND
+          at.tulaj_azon = t.azon AND
+          t.nev LIKE 'Fekete Zsófia';
+    
+53.Listázza ki azon autók rendszámait, amelyek első vásárlási ára nagyobb, mint a 2002 után újonnan vásárolt autók átlagos első vásárlási ára!
+SELECT rendszam
+    FROM SZERELO.SZ_AUTO
+    WHERE elso_vasarlasi_ar >
+    (
+        SELECT AVG(elso_vasarlasi_ar)
+            FROM SZERELO.SZ_AUTO
+            WHERE extract(year from elso_vasarlas_idopontja) > 2002
+ );
+ 
+54.Mely autótulajdonosok vásároltak már 3-nál többször autót? A tulajdonosokat az azonosítójukkal adja meg!
+SELECT tulaj_azon
+    FROM SZERELO.SZ_AUTO_TULAJDONOSA
+    HAVING count(*) > 3
+    GROUP BY tulaj_azon;
+    
+55.Listázza ki az 'Opel' márkájú autótípusok adatait!
+SELECT *
+    FROM SZERELO.SZ_AUTOTIPUS
+    WHERE marka = 'Opel';
+    
+56.Listázza ki a legalább 30 éves szerelők nevét, életkorát (évben mérve, kerekítve) és telefonszámát! A lista legyen életkor szerint csökkenően rendezve!
+SELECT nev , round(months_between(sysdate, szul_dat)/12) eletkor, telefon
+    FROM SZERELO.SZ_SZERELO
+    WHERE round(months_between(sysdate, szul_dat)/12) >= 30
+    ORDER BY eletkor DESC;
+    
+57.Melyek azok a műhelyek, amelyek 50-nél több autószerelést végeztek el (beleértve az éppen folyó szereléseket is)? A műhelyeket az azonosítójukkal adja meg, rendezve!
+SELECT muhely_azon
+    FROM SZERELO.SZ_SZERELES
+    HAVING count(*) > 50
+    GROUP BY muhely_azon
+    ORDER BY muhely_azon;
+    
+58.Átlagosan mennyiért szerelték/szerelik a zöld színű autókat?
+SELECT AVG(sz.munkavegzes_ara)
+    FROM SZERELO.SZ_AUTO a, SZERELO.SZ_SZERELES sz
+    WHERE a.azon = sz.auto_azon
+    AND a.szin = 'zöld';
+    
+59.Listázza ki azoknak az autóknak az azonosítóját, színét és rendszámát, amelyeknek nem ismert az első vásárlási áruk, vagy a rendszámuk két darab nullára végződik! A lista szín, azon belül rendszám szerint legyen rendezett!
+SELECT azon, szin, rendszam
+    FROM SZERELO.SZ_AUTO
+    WHERE elso_vasarlasi_ar IS NULL
+    OR rendszam LIKE '%00'
+    ORDER BY szin, rendszam;
+    
+60.Listázza ki azoknak a szereléseknek az adatait, amelyeknek a kezdete és vége más évre esett! Rendezze ezeket az adatokat a szerelés időtartama szerint csökkenő sorrendbe!
+SELECT *
+    FROM SZERELO.SZ_SZERELES
+    WHERE extract(year from szereles_kezdete) NOT LIKE extract(year from szereles_vege)
+    ORDER BY round(months_between(szereles_kezdete, szereles_vege)) DESC;
+    
+61. Listázza ki a minimális árral rendelkező szerelések adatait!
+SELECT *
+    FROM SZERELO.SZ_SZERELES
+    WHERE munkavegzes_ara =
+    (
+        SELECT MIN(munkavegzes_ara)
+            FROM SZERELO.SZ_SZERELES
+    );
+
+62. Listázza ki az egyes autótípusok átlagos szervizköltségét! Az autótípusokat az azonosítójukkal adja meg
+SELECT a.tipus_azon, AVG(sz.munkavegzes_ara) ar
+    FROM SZERELO.sz_szereles sz JOIN SZERELO.sz_auto a
+      ON sz.auto_azon = a.azon
+    GROUP BY a.tipus_azon;
+
+63. Listázza ki azokhoz a felértékelésekhez tartozó autóazonosítót és dátumot, amelyek vagy az elmúlt 7 évben, vagy 20 évnél régebben készültek! A lista legyen dátum szerint rendezett!
+SELECT auto_azon, datum
+    FROM SZERELO.sz_autofelertekeles
+    WHERE (months_between(sysdate,datum)/12 < 7 OR months_between(sysdate,datum)/12 >20)
+    ORDER BY datum;
+------------------------------2.ZH------------------------------
+
+1, Bővítse az 'sz_szerelo' táblát egy 'cafeteria' nevű, legfeljebb 6 jegyű, egész értékű mezővel úgy, hogy a cafeteria értékének legalább 2000-nek kell lennie!
+alter table sz_szerelo
+add (cafeteria NUMBER(6) check (cafeteria >=2000));
+
+2, Szúrja be a 'szerelo' sémából a saját sémájának 'sz_autotipus' táblájába azokat az autótípusokat, amelyeknek a leírásában szerepel a 'légzsák' kifejezés!
+INSERT INTO SZ_AUTOTIPUS
+SELECT *
+    FROM SZERELO.SZ_AUTOTIPUS
+    WHERE leiras LIKE '%légzsák%';
+VAGY TALÁN EZ: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+INSERT INTO sajat.SZ_AUTOTIPUS
+SELECT *
+    FROM SZERELO.SZ_AUTOTIPUS
+    WHERE leiras LIKE '%légzsák%';
+    
+3, Listázza ki a 'Féktelenül Bt.' nevű szerelőműhely két jelenleg legtöbbet kereső szerelőjét! A lista csak a szerelők nevét és a havi fizetését tartalmazza, ez utóbbi szerint csökkenő sorrendben!
+SELECT sz.nev, d.havi_fizetes
+    FROM SZERELO.SZ_SZERELOMUHELY szm, SZERELO.SZ_DOLGOZIK d, SZERELO.SZ_SZERELO sz
+    WHERE szm.azon = d.muhely_azon AND d.szerelo_azon = sz.azon
+    AND szm.nev = 'Féktelenül Bt.'
+    AND d.munkaviszony_vege IS NULL
+    ORDER BY d.havi_fizetes DESC
+    FETCH FIRST 2 ROWS WITH TIES;
+    
+4, Az 'ABC201' rendszámú autót kivonták a forgalomból. Törölje a jármű összes korábbi és jelenlegi tulajdonviszonyát!
+DELETE FROM sz_auto_tulajdonosa
+    WHERE auto_azon IN
+    (
+        SELECT azon 
+            FROM sz_auto 
+            WHERE rendszam = 'ABC201'
+    );
+    
+5, Hozzon létre nézetet, amely megadja azoknak az autótípusoknak a megnevezését, amelyekből a legtöbb autó létezik az adatbázisban!
+CREATE VIEW legtobb_megnevezes AS
+SELECT at.megnevezes
+    FROM SZERELO.SZ_AUTOTIPUS at, SZERELO.SZ_AUTO a
+    WHERE at.azon = a.tipus_azon
+    GROUP BY at.megnevezes
+    ORDER BY COUNT(at.megnevezes) DESC
+    FETCH FIRST ROW WITH TIES;
+    
+6, A legfiatalabb szerelő odaköltözik a legidősebb szerelőhöz. Módosítsa ennek megfelelően a legfiatalabb szerelő címét!
+UPDATE SZ_SZERELO
+SET cim =
+(
+    SELECT cim
+        FROM SZERELO.SZ_SZERELO
+        WHERE szul_dat =
+        (
+            SELECT MIN(szul_dat)
+                FROM SZERELO.SZ_SZERELO
+        )
+)
+WHERE szul_dat =
+(
+    SELECT szul_dat
+        FROM SZERELO.SZ_SZERELO
+        WHERE szul_dat =
+        (
+            SELECT MAX(szul_dat)
+                FROM SZERELO.SZ_SZERELO
+        )
+);
+
+7, Hozzon létre nézetet, amely listázza azoknak a debreceni szerelőműhelyeknek a nevét és címét a műhely vezetőjének nevével és címével együtt, amelyeknek a vezetője nem debreceni! Egy cím akkor debreceni, ha úgy kezdődik, hogy 'Debrecen'.
+CREATE VIEW muhelyek AS
+SELECT szm.nev muhely_nev, szm.cim muhely_cim, sz.nev vezeto_nev, sz.cim vezeto_cim
+    FROM SZERELO.SZ_SZERELOMUHELY szm, SZERELO.SZ_SZERELO sz
+    WHERE szm.vezeto_azon = sz.azon
+    AND szm.cim LIKE 'Debrecen%'
+    AND sz.cim NOT LIKE 'Debrecen%';
+    
+8, Listázza ki az első 10 legkisebb összegű felértékeléshez tartozó autó rendszámát és a felértékelési összeget! A lista legyen a felértékelési összeg szerint csökkenő sorrendben rendezett!
+SELECT a.rendszam, af.ertek
+    FROM SZERELO.SZ_AUTOFELERTEKELES af, SZERELO.SZ_AUTO a
+    WHERE af.auto_azon = a.azon
+    AND (a.rendszam,af.ertek) IN
+    (
+        SELECT a.rendszam, af.ertek
+            FROM SZERELO.SZ_AUTOFELERTEKELES af, SZERELO.SZ_AUTO a
+            WHERE af.auto_azon = a.azon
+            ORDER BY af.ertek
+            FETCH FIRST 10 ROWS WITH TIES
+    )
+    ORDER BY af.ertek DESC;
+    
+9, Listázza ki azon tulajdonosok nevét, akik nem rendelkeztek soha Opel márkájú autóval!
+SELECT t.nev
+    FROM SZERELO.SZ_TULAJDONOS t, SZERELO.SZ_AUTO_TULAJDONOSA at, SZERELO.SZ_AUTO a, SZERELO.SZ_AUTOTIPUS atip
+    WHERE t.azon = at.tulaj_azon AND at.auto_azon = a.azon AND a.tipus_azon = atip.azon
+    AND atip.marka != 'Opel'
+    GROUP BY t.nev;
+    
+10, Listázza ki azoknak a szerelőknek a nevét, címét és adószámát, akiknek bármelyik korábbi vagy jelenlegi havi fizetése kevesebb a 'Féktelenül Bt.' nevű műhelyben valaha dolgozó összes szerelőénél! Egy szerelő csak egyszer szerepeljen az eredményben!
+SELECT sz.nev, sz.cim, sz.adoszam
+    FROM SZERELO.SZ_SZERELO sz
+    WHERE sz.azon IN
+    (
+        SELECT d.szerelo_azon
+            FROM SZERELO.SZ_DOLGOZIK d JOIN SZERELO.SZ_SZERELOMUHELY szm
+            ON d.muhely_azon = szm.azon
+            WHERE d.HAVI_FIZETES < ALL
+            (
+                SELECT d.havi_fizetes
+                    FROM SZERELO.SZ_DOLGOZIK d JOIN SZERELO.SZ_SZERELOMUHELY szm
+                    ON d.muhely_azon = szm.azon
+                    WHERE szm.nev = 'Féktelenül Bt.'
+            )
+    )
+    GROUP BY sz.nev, sz.cim, sz.adoszam;
+    
+11, Hozzon létre egy 'biztositas' nevű táblát, amely tartalmazza a biztosítás számát (pontosan 10 karakteres sztring; ez az elsődleges kulcs), az autó azonosítóját (legfeljebb 5 jegyű egész), a tulajdonos azonosítóját (legfeljebb 5 jegyű egész) és e-mail-címét (legfeljebb 40 karakteres sztring), a biztosítás kezdetét és végét (dátumok), valamint a havi összeget (legfeljebb 5 jegyű egész)! A tábla hivatkozzon az 'sz_tulajdonos' és az 'sz_auto' táblákra, és az e-mail-cím legyen egyedi! Az elsődleges kulcs megszorítást nevezze el!
+CREATE TABLE biztositas
+(
+    biztositas_szama CHAR(10 CHAR), constraint bsz_pk PRIMARY KEY (biztositas_szama),
+    auto_azon NUMBER(5),
+    tulaj_azon NUMBER(5),
+    email_cim VARCHAR2(40 CHAR),
+    biztositas_kezdete DATE,
+    biztositas_vege DATE,
+    havi_osszeg NUMBER(5),
+    constraint email_uq unique (email_cim),
+    constraint tulaj_fk foreign key (tulaj_azon) references sz_tulajdonos(azon),
+    constraint auto_fk foreign key (auto_azon) references sz_auto(azon)
+);
+
+11/b Hozzon létre egy 'biztositas' nevű táblát, amely tartalmazza a biztosítás számát (pontosan 8 karakteres sztring; ez az elsődleges kulcs), az autó azonosítóját (legfeljebb 5 jegyű egész), a tulajdonos azonosítóját (legfeljebb 5 jegyű egész) és e-mail-címét (legfeljebb 40 karakteres sztring), a biztosítás kezdetét és végét (dátumok), valamint a havi összeget (legfeljebb 5 jegyű egész)! A tábla hivatkozzon az 'sz_tulajdonos' és az 'sz_auto' táblákra, a havi összeg legyen nagyobb, mint 10 000, az e-mail-cím pedig legyen kötelező! Az elsődleges kulcs megszorítást nevezze el!
+CREATE TABLE biztositas
+(
+    biztositas_szam CHAR(8 CHAR) constraint biz_pk PRIMARY KEY,
+    auto_azon NUMBER(5),
+    tulaj_azon NUMBER(5),
+    email_cim VARCHAR2(40 CHAR) NOT NULL,
+    biztositas_kezdete DATE,
+    biztositas_vege DATE,
+    havi_osszeg NUMBER(5)
+    constraint hav_check CHECK (havi_osszeg > 10000),
+    constraint tulaj_fk FOREIGN KEY (tulaj_azon) REFERENCES SZ_TULAJDONOS(azon),
+    constraint auto_fk FOREIGN KEY (auto_azon) REFERENCES SZ_AUTO(azon)
+);
+
+12/a, Vonja vissza a lekérdezési jogosultságot a 'dzsoni' nevű felhasználótól az ön 'sz_szerelo' táblájáról!
+REVOKE SELECT ON sz_szerelo FROM dzsoni;
+
+12/b, Adjon lekérdezési jogosultságot a 'dzsoni' nevű felhasználónak az ön 'sz_szerelo' táblájára!
+GRANT SELECT ON sz_szerelo TO dzsoni;
+
+13, Hozzon létre nézetet, amely megmutatja, hogy az egyes szerelőműhelyekbe milyen típusú autókat visznek a leggyakrabban! A nézet a műhely azonosítóját és a típus azonosítóját tartalmazza!
+CREATE VIEW leggyakoribb_marka AS
+SELECT szm.nev, at.marka
+    FROM SZERELO.SZ_SZERELOMUHELY szm, SZERELO.SZ_SZERELES sz, SZERELO.SZ_AUTO a, SZERELO.SZ_AUTOTIPUS at
+    WHERE szm.azon = sz.muhely_azon AND sz.auto_azon = a.azon
+    AND a.tipus_azon = at.azon
+    AND sz.auto_azon IN
+    (
+        SELECT auto_azon
+            FROM SZERELO.SZ_SZERELES
+            INTERSECT
+            SELECT azon
+            FROM SZERELO.SZ_AUTO
+            WHERE tipus_azon IN
+            (
+                SELECT azon
+                FROM SZERELO.SZ_AUTOTIPUS
+            )
+    )
+    GROUP BY szm.nev, at.marka
+    ORDER BY count(sz.auto_azon) DESC
+    FETCH FIRST 3 ROWS ONLY;
+
+14, Hozzon létre nézetet, amely megmutatja a legnagyobb első vásárlási árral rendelkező szürke autó(k) rendszámát!
+CREATE VIEW legnagyobb_elso_szurke_auto AS
+SELECT rendszam
+    FROM szerelo.sz_auto
+    WHERE szin = 'szürke'
+    ORDER BY elso_vasarlasi_ar DESC
+    FETCH FIRST ROW WITH TIES;
+    
+15, Törölje azoknak az autóknak a felértékelési adatait, amelyeknek a rendszáma nem pontosan 6 karakterből áll!
+DELETE FROM sz_autofelertekeles
+    WHERE auto_azon IN
+    (
+        SELECT azon
+            FROM sz_auto
+            WHERE length(rendszam) != 6
+    );
+    
+16, Szúrja be a 'szerelo' sémából a saját sémájának 'sz_autotipus' táblájába azokat az autótípusokat, amelyekhez nem tartozik autó!
+INSERT INTO sz_autotipus
+SELECT *
+    FROM SZERELO.SZ_AUTOTIPUS
+    WHERE marka IN
+    (
+        SELECT at.marka
+            FROM SZERELO.SZ_AUTO a RIGHT OUTER JOIN SZERELO.SZ_AUTOTIPUS at
+            ON a.tipus_azon = at.azon
+            GROUP BY at.marka
+            ORDER BY count(a.azon)
+            FETCH FIRST ROW WITH TIES
+    );
+    
+17, Törölje az 'sz_auto_tulajdonosa' tábla elsődleges kulcs megszorítását!
+ALTER TABLE sz_auto_tulajdonosa 
+DROP PRIMARY KEY;
+
+18/a, Vonjon vissza minden jogosultságot minden felhasználótól az ön 'sz_auto' táblájáról!
+REVOKE ALL ON sz_auto FROM PUBLIC;
+
+18/b, Adjon meg minden jogosultságot minden felhasználónak az ön 'sz_auto' táblájára!
+GRANT ALL ON sz_auto to PUBLIC;
+
+19, Listázza ki azoknak az autótípusoknak az azonosítóját, megnevezését és az ilyen típusú autókon elvégzett szerelések összárát, amelyeknél ez az összár a legkisebb 5 érték közé esik!
+SELECT atip.azon, atip.megnevezes, atip.marka
+    FROM SZERELO.SZ_AUTOTIPUS atip, SZERELO.SZ_AUTO a, SZERELO.SZ_SZERELES sz
+    GROUP BY atip.azon, atip.megnevezes, atip.marka
+    ORDER BY SUM(sz.munkavegzes_ara)
+    FETCH FIRST 5 ROWS ONLY; --?????????????????????????????????????????????????????????????
+    
+20, Adja meg azon műhelyek azonosítóját és nevét, ahol nem dolgozik és nem is dolgozott egri szerelő (akinek a címe úgy kezdődik, hogy 'Eger')!
+SELECT szm.azon, szm.nev
+    FROM SZERELO.SZ_SZERELOMUHELY szm, SZERELO.SZ_DOLGOZIK d, SZERELO.SZ_SZERELO sz
+    WHERE szm.azon = d.muhely_azon AND d.szerelo_azon = sz.azon
+    AND sz.cim NOT LIKE 'Eger%'
+    AND szm.nev NOT IN
+    (
+        SELECT szm.nev
+            FROM SZERELO.SZ_SZERELOMUHELY szm, SZERELO.SZ_DOLGOZIK d, SZERELO.SZ_SZERELO sz
+            WHERE szm.azon = d.muhely_azon AND d.szerelo_azon = sz.azon
+            AND sz.cim LIKE 'Eger%'
+            GROUP BY szm.azon, szm.nev
+    )
+    GROUP BY szm.azon, szm.nev;
+
+21, A szerelők tanfolyamon vettek részt. Készítsen egy 'tanfolyam' nevű táblát! A tábla tartalmazza a tanfolyam azonosítóját (pontosan 10 karakteres sztring), nevét (legfeljebb 20 karakteres sztring), leírását (legfeljebb 50 karakteres sztring), kezdetét és végét (dátumok), költségét (legfeljebb 5 jegyű egész), valamint hogy melyik szerelő vett rajta részt (legfeljebb 5 jegyű egész)! A tábla elsődleges kulcsát a tanfolyam azonosítója és a szerelő azonosítója alkossa! A szerelőazonosító hivatkozzon az 'sz_szerelo' táblára! Az elsődleges kulcs megszorítást nevezze el!
+CREATE TABLE tanfolyam
+(
+    azon CHAR(10 CHAR),
+    nev VARCHAR2(20 CHAR),
+    leiras VARCHAR2(50 CHAR),
+    kezdet DATE,
+    veg DATE,
+    koltseg NUMBER(5),
+    szerelo NUMBER(5) REFERENCES sz_szerelo,
+    CONSTRAINT elsodleges_pk PRIMARY KEY(azon, szerelo)
+);
+
+22/a, Listázza ki az autókat a rendszámukkal megadva, valamint a rajtuk elvégzett szerelések árát (ha több szerelés volt, akkor annyiszor, ahányszor szerelték az autót)! Amelyik autó még sosem volt szerelve, ott az ár helyén a 'nem volt szerelve' karaktersorozat kerüljön kiírásra!
+SELECT a.rendszam, nvl(to_char(sz.munkavegzes_ara),'nem volt szerelve') szereles_ar
+    FROM SZERELO.SZ_AUTO a LEFT OUTER JOIN SZERELO.SZ_SZERELES sz
+    ON a.azon = sz.auto_azon;
+    
+22/b, Listázza ki az autókat a rendszámukkal megadva, valamint az összes felértékelési értéküket! Amely autót még soha nem értékeltek fel, ott az érték legyen 0!
+SELECT a.rendszam, nvl(af.ertek,0) ertek
+    FROM SZERELO.SZ_AUTO a LEFT OUTER JOIN SZERELO.SZ_AUTOFELERTEKELES af
+    ON a.azon = af.auto_azon;
+
+23, Növelje 10%-kal azoknak a szereléseknek az árát, amelyeket 2008. január 1. és 2010. március 31. között fejeztek be a 'Kormány Zoltán Szerelőműhelye' nevű szerelőműhelyben (felteheti, hogy csak egy ilyen nevű műhely létezik)!
+UPDATE sz_szereles
+SET munkavegzes_ara = munkavegzes_ara*1.1
+    WHERE to_char(szereles_vege,'yyyy.mm.dd') > '2008.01.01' AND
+          to_char(szereles_vege,'yyyy.mm.dd') < '2010.03.31' AND
+    muhely_azon IN 
+    (
+        SELECT azon FROM sz_szerelomuhely
+            WHERE nev = 'Kormány Zoltán Szerelőműhelye'
+    );
+
+24, Listázza ki az első 5 legnagyobb összegű felértékeléshez tartozó autó rendszámát és a felértékelési összeget! A lista legyen a felértékelési összeg szerint csökkenő sorrendben rendezett!
+SELECT a.rendszam, af.ertek
+    FROM SZERELO.SZ_AUTO a, SZERELO.SZ_AUTOFELERTEKELES af
+    WHERE a.azon = af.auto_azon
+    ORDER BY af.ertek DESC
+    FETCH FIRST 5 ROWS WITH TIES;
+    
+25, Hozzon létre nézetet, amely listázza azokat a márkákat és autótípusmegnevezéseket, amelyekhez nem tartozik autó!
+CREATE VIEW marka_nincs_auto AS
+SELECT marka, megnevezes
+    FROM SZERELO.SZ_AUTOTIPUS
+    WHERE marka IN
+    (
+        SELECT at.marka
+            FROM SZERELO.SZ_AUTO a RIGHT OUTER JOIN SZERELO.SZ_AUTOTIPUS at
+            ON a.tipus_azon = at.azon
+            GROUP BY at.marka
+            ORDER BY count(a.azon)
+            FETCH FIRST ROW WITH TIES
+    );
+    
+26, Szúrja be a 'szerelo' sémából a saját sémájának 'sz_tulajdonos' táblájába azokat a tulajdonosokat, akiknek volt vagy van Toyota márkájú autójuk!
+INSERT INTO sz_tulajdonos (azon, nev, cim)
+SELECT t.azon, t.nev, t.cim
+    FROM SZERELO.SZ_TULAJDONOS t, SZERELO.SZ_AUTO_TULAJDONOSA at, SZERELO.SZ_AUTO a, SZERELO.SZ_AUTOTIPUS at
+    WHERE t.azon = at.tulaj_azon AND at.auto_azon = a.azon AND a.tipus_azon = at.azon
+    AND marka = 'Toyota'
+    HAVING count(*) > 0
+    GROUP BY t.azon, t.nev, t.cim;
+    
+27, Szúrja be a 'szerelo' sémából a saját sémájának 'sz_szerelo' táblájába azokat a szerelőket, akik jelenleg dolgoznak vagy korábban dolgoztak debreceni szerelőműhelynél (azaz olyan műhelynél, amelynek a címe úgy kezdődik, hogy 'Debrecen')!
+INSERT INTO sz_szerelo
+SELECT sz.azon, sz.cim, sz.nev, sz.telefon, sz.szul_dat, sz.adoszam
+    FROM SZERELO.SZ_SZERELO sz LEFT OUTER JOIN SZERELO.SZ_DOLGOZIK d
+    ON sz.azon = d.szerelo_azon
+    JOIN SZERELO.SZ_SZERELOMUHELY szm
+    ON d.muhely_azon = szm.azon
+    WHERE szm.cim LIKE 'Debrecen%'
+    GROUP BY sz.azon, sz.cim, sz.nev, sz.telefon, sz.szul_dat, sz.adoszam;
+    
+28, Hozzon létre nézetet, amely listázza az összes autó rendszámát az utolsó tulajdonosának a nevével együtt! Ha az autónak nincs tulajdonosa, akkor a 'nincs tulaj' sztring kerüljön a rendszám mellé!
+CREATE VIEW nezet AS
+SELECT rendszam, tulaj
+    FROM
+    (
+        SELECT a.rendszam rendszam, nvl(t.nev, 'nincs tulaj') tulaj, MAX(att.vasarlas_ideje) utolso_kolcsonzes
+            FROM szerelo.sz_auto a LEFT JOIN szerelo.sz_auto_tulajdonosa att
+            ON a.azon = att.auto_azon
+            LEFT JOIN szerelo.sz_tulajdonos t ON att.tulaj_azon = t.azon
+            GROUP BY a.rendszam, t.nev
+    );
+    
+29, A szerelők telefonszámát nem fontos tudni, ezért törölje a 'telefon' mezőt az 'sz_szerelo' táblából!
+ALTER TABLE sz_szerelo drop column telefon;
+
+30, A 'Kormány Zoltán Szerelőműhelye' nevű szerelőműhely bezár (felteheti, hogy csak egy ilyen nevű műhely létezik). Emiatt minden megkezdett szerelését le kell zárni, azaz minden befejezetlen szerelés vége a mai dátum legyen, a munkavégzés ára pedig legyen a szerelés kezdete óta eltelt napok száma szorozva az autó első vásárlási árának a 10%-ával!
+UPDATE sz_szereles sz
+SET szereles_vege = sysdate, 
+    munkavegzes_ara = (sysdate-szereles_kezdete)*(SELECT elso_vasarlasi_ar*0.1 FROM szerelo.sz_auto WHERE azon = sz.auto_azon)
+    WHERE muhely_azon =
+    (
+        SELECT azon From szerelo.sz_szerelomuhely
+            WHERE nev = 'Kormány Zoltán Szerelőműhelye'
+    );
+    
+31, Listázza ki azoknak az autóknak az adatait, amelyeket vagy 1998-ban helyeztek üzembe, vagy Opel márkájúak!
+SELECT a.*
+    FROM SZERELO.SZ_AUTO a, SZERELO.SZ_AUTOTIPUS at
+    WHERE a.tipus_azon = at.azon
+    AND extract(year from elso_vasarlas_idopontja) = 1998
+    OR at.marka = 'Opel';
+    
+32, Növelje az autók első vásárlási árának a 20%-ával azoknak az autófelértékeléseknek az értékét, amelyeket 2011 után végeztek a Hyundai és a Suzuki márkájú autókon!
+UPDATE sz_autofelertekeles af
+SET ertek = ertek+(SELECT elso_vasarlasi_ar*0.2 FROM sz_auto a WHERE a.azon = af.auto_azon)
+    WHERE extract (year FROM datum)>2011 AND auto_azon IN
+    (
+        SELECT azon FROM szerelo.sz_auto
+            WHERE tipus_azon IN
+            (
+                SELECT azon
+                    FROM szerelo.sz_autotipus
+                    WHERE marka IN ('Hyundai','Suzuki')
+            )
+    );
+    
+33, Törölje az 'sz_dolgozik', az 'sz_szerelomuhely' és az 'sz_szerelo' táblákat! Vegye figyelembe az egyes táblákra hivatkozó külső kulcsokat! A feladat megoldásához több utasítást is használhat.
+DROP TABLE sz_dolgozik CASCADE CONSTRAINTS PURGE;
+DROP TABLE sz_szerelomuhely CASCADE CONSTRAINTS PURGE;
+DROP TABLE sz_szerelo CASCADE CONSTRAINTS PURGE;
+
+34, Hozzon létre nézetet, amely megadja, hogy az egyes műhelyvezetők melyik műhelyt vezetik, illetve melyik más műhelyekben dolgoztak már! A vezetőket és a műhelyeket is a nevükkel adja meg!
+CREATE VIEW nezet2 AS
+SELECT szm.nev muhelynev, sz.nev szerelonev
+    FROM SZERELO.SZ_SZERELOMUHELY szm, SZERELO.SZ_SZERELO sz
+    WHERE szm.vezeto_azon = sz.azon
+UNION ALL
+SELECT szm.nev, sz.nev
+    FROM SZERELO.SZ_DOLGOZIK d, SZERELO.SZ_SZERELOMUHELY szm, SZERELO.SZ_SZERELO sz
+    WHERE d.muhely_azon = szm.azon AND d.szerelo_azon = sz.azon
+    AND szm.vezeto_azon IN
+    (
+        SELECT szerelo_azon
+            FROM SZERELO.SZ_SZERELO
+    );
+    
+35, Törölje az 'sz_tulajdonos' és az 'sz_auto_tulajdonosa' táblákat! Vegye figyelembe az egyes táblákra hivatkozó külső kulcsokat! A feladat megoldásához több utasítást is használhat.
+DROP TABLE sz_tulajdonos CASCADE CONSTRAINTS PURGE;
+DROP TABLE sz_auto_tulajdonosa CASCADE CONSTRAINTS PURGE;
+
+36, Törölje azokat az autómárkákat, amelyekhez egyetlen típus sem tartozik az adatbázisban!
+DELETE FROM sz_automarka
+SELECT nev
+    FROM SZERELO.SZ_automarka
+    WHERE nev NOT IN
+    (
+        SELECT marka
+            FROM SZERELO.SZ_AUTOTIPUS
+            HAVING count(*) > 0
+            GROUP BY marka
+    );
+    
+37, Hozzon létre nézetet, amely megadja, hogy az egyes műhelyvezetők melyik műhelyt vezetik, illetve melyik más műhelyekben dolgoztak már! A vezetőket és a műhelyeket is a nevükkel adja meg!
+CREATE VIEW nezet2 AS
+SELECT szm.nev muhelynev, sz.nev szerelonev
+    FROM SZERELO.SZ_SZERELOMUHELY szm, SZERELO.SZ_SZERELO sz
+    WHERE szm.vezeto_azon = sz.azon
+UNION ALL
+SELECT szm.nev, sz.nev
+    FROM SZERELO.SZ_DOLGOZIK d, SZERELO.SZ_SZERELOMUHELY szm, SZERELO.SZ_SZERELO sz
+    WHERE d.muhely_azon = szm.azon AND d.szerelo_azon = sz.azon
+    AND szm.vezeto_azon IN
+    (
+        SELECT szerelo_azon
+            FROM SZERELO.SZ_SZERELO
+    );
+
+38, Listázza ki azoknak az autótípusoknak az azonosítóját és az ilyen típusú autók átlagos felértékelési összegét, amelyeknél ez az átlag a legkisebb 3 érték közé esik!
+SELECT a.tipus_azon, AVG(af.ertek)
+    FROM SZERELO.SZ_AUTO a, SZERELO.SZ_AUTOFELERTEKELES af
+    WHERE a.azon = af.auto_azon
+    HAVING AVG(af.ertek) BETWEEN
+    (
+        SELECT AVG(af.ertek)
+            FROM SZERELO.SZ_AUTO a, SZERELO.SZ_AUTOFELERTEKELES af
+            WHERE a.azon = af.auto_azon
+            GROUP BY a.tipus_azon
+            ORDER BY AVG(af.ertek)
+            FETCH FIRST 1 ROW ONLY
+    )
+    AND
+    (
+        SELECT AVG(af.ertek)
+            FROM SZERELO.SZ_AUTO a, SZERELO.SZ_AUTOFELERTEKELES af
+            WHERE a.azon = af.auto_azon
+            GROUP BY a.tipus_azon
+            ORDER BY AVG(af.ertek)
+            OFFSET 2 ROWS FETCH NEXT 1 ROW ONLY
+    )
+    GROUP BY a.tipus_azon;
+    
+39, Törölje azokat a szereléseket, amelyeket 2013-ban fejeztek be, és fekete színű autókon végeztek!
+DELETE FROM sz_szereles
+    WHERE extract(year FROM szereles_vege) = 2013
+    AND auto_azon IN
+    (
+        SELECT azon
+            FROM SZ_AUTO
+            WHERE szin = 'fekete'
+    );
+    
+40, Listázza ki azokat az autótípusokat (Listázza ki az autómárkákat a típusaik megnevezésével együtt! A listában szerepeljenek azok az autómárkák is, amelyekhez nem tartozik egyetlen autótípus sem!), amilyen típusú autók közül már legalább egyet felértékeltek! Egy típus csak egyszer szerepeljen az eredményben! A lista legyen rendezett a márka, azon belül a megnevezés szerint!
+SELECT at.marka, at.megnevezes
+    FROM SZERELO.SZ_AUTOTIPUS at, SZERELO.SZ_AUTO a, SZERELO.SZ_AUTOFELERTEKELES af
+    WHERE at.azon = a.tipus_azon AND a.azon = af.auto_azon
+    AND at.azon IN
+    (
+        SELECT a.tipus_azon
+            FROM SZERELO.SZ_AUTO a, SZERELO.SZ_AUTOFELERTEKELES af
+            WHERE a.azon = af.auto_azon
+            HAVING count(af.auto_azon) > 0
+            GROUP BY a.tipus_azon
+    )
+    GROUP BY at.marka, at.megnevezes
+    ORDER BY at.marka, at.megnevezes;
+    
+41, Hozzon létre nézetet, amely megmutatja, hogy melyik műhelyben végezték a leghosszabb (már befejezett) szerelést, és hogy ez a szerelés hány napig tartott! A műhelyt a nevével adja meg!
+CREATE VIEW leghosszabb_szereles AS
+SELECT szm.nev, to_date(sz.szereles_vege)-to_date(sz.szereles_kezdete) nap
+    FROM SZERELO.SZ_SZERELOMUHELY szm, SZERELO.SZ_SZERELES sz
+    WHERE szm.azon = sz.muhely_azon
+    AND sz.szereles_vege IS NOT NULL
+    GROUP BY szm.nev, to_date(sz.szereles_vege)-to_date(sz.szereles_kezdete)
+    ORDER BY to_date(sz.szereles_vege)-to_date(sz.szereles_kezdete) DESC
+    FETCH FIRST ROW WITH TIES;
+    
+42, Hozzon létre nézetet, amely kilistázza színenként a legdrágábban forgalomba helyezett autó(k) rendszámát és első vásárlásakori árát!
+CREATE VIEW legdragabb_szinu_autok AS
+SELECT szin, rendszam, elso_vasarlasi_ar
+    FROM SZERELO.SZ_AUTO
+    WHERE elso_vasarlasi_ar IN
+    (
+        SELECT MAX(elso_vasarlasi_ar)
+            FROM SZERELO.SZ_AUTO
+            GROUP BY szin
+    );
+    
+43, Hozzon létre nézetet, amely megmutatja, hogy milyen évjáratú autókat értékeltek fel a legtöbbször! Az autók évjárata az első vásárlásuk dátumának az évszáma.
+CREATE VIEW valamiview AS
+SELECT extract(year from elso_vasarlas_idopontja) ev
+    FROM SZERELO.SZ_AUTO a, SZERELO.SZ_AUTOFELERTEKELES af
+    WHERE a.azon = af.auto_azon
+    GROUP BY extract(year from elso_vasarlas_idopontja)
+    ORDER BY COUNT(af.auto_azon) DESC
+    FETCH FIRST ROW WITH TIES;
+
+44, Listázza ki azon autók adatait, amelyeket még soha nem értékeltek fel!
+SELECT *
+    FROM SZERELO.SZ_AUTO
+    WHERE azon NOT IN
+    (
+        SELECT auto_azon
+            FROM SZERELO.SZ_AUTOFELERTEKELES
+    );
+    
+45, Listázza ki azon autók adatait, amelyek jelenlegi vagy bármelyik korábbi tulajdonosa egri lakos (akinek a címe úgy kezdődik, hogy 'Eger'), és már szervizelték egri műhelyben (azaz olyan műhelyben, amelynek a címe úgy kezdődik, hogy 'Eger')! Egy autó csak egyszer szerepeljen az eredményben!
+SELECT DISTINCT a.*
+    FROM SZERELO.sz_szereles sz INNER JOIN SZERELO.sz_auto a ON sz.auto_azon = a.azon
+    WHERE muhely_azon IN
+    (
+        SELECT azon FROM sz_szerelomuhely
+            WHERE cim LIKE 'Eger%'
+    )
+    AND auto_azon IN
+    (
+        SELECT DISTINCT auto_azon
+            FROM sz_auto_tulajdonosa szat INNER JOIN sz_tulajdonos szt
+            ON szat.tulaj_azon=szt.azon
+            WHERE cim LIKE 'Eger%'
+    );
+    
+46, Hozzon létre egy 'hozzatartozo' nevű táblát, amelyben a szerelők hozzátartozói vannak! Minden hozzátartozónak van azonosítója (pontosan 10 karakteres sztring; ez az elsődleges kulcs), neve (legfeljebb 40 karakteres sztring), neme (legfeljebb 10 karakteres sztring), születési dátuma (dátum) és hogy melyik szerelő hozzátartozója (legfeljebb 5 jegyű egész), hivatkozással az 'sz_szerelo' táblára. A nevet legyen kötelező megadni! Az elsődleges kulcs megszorítást nevezze el!
+CREATE TABLE hozzatartozo
+(
+    azon char(10 char), constraint hozzatartozo_pk primary key (azon),
+    nev varchar2(40 char) not null,
+    nem varchar2(10 char),
+    szul_dat date,
+    hozzatartozik number(5) references sz_szerelo
+);
+
+47, Szúrja be a 'szerelo' sémából a saját sémájának 'sz_auto' táblájába azokat az autókat, amelyeknek a jelenlegi vagy bármely korábbi tulajdonosa 'Kovács' vezetéknévvel rendelkezik (azaz a tulajdonos neve úgy kezdődik, hogy 'Kovács '; figyeljen a szóközre!), és az autó színe szürke vagy kék!
+INSERT INTO sz_auto
+SELECT a.*
+    FROM szerelo.sz_auto a, szerelo.sz_auto_tulajdonosa atul, szerelo.sz_tulajdonos t
+    WHERE a.azon = atul.auto_azon AND
+          atul.tulaj_azon = t.azon AND
+          t.nev LIKE 'Kovács %' AND szin IN ('szürke','kék');
+    
+48, Listázza ki a szerelőműhelyek azonosítóját és az ott elvégzett szerelések számát! Egy szerelőműhely akkor is szerepeljen a listában, ha ott még nem volt szerelés! Rendezze az eredményt a szerelések száma szerint csökkenő sorrendbe!
+SELECT szer.azon, count(szereles_vege) szer_szam
+    FROM szerelo.sz_szereles sze RIGHT OUTER JOIN szerelo.sz_szerelomuhely szer 
+    ON sze.muhely_azon=szer.azon
+    GROUP BY szer.azon
+    ORDER BY szer_szam DESC;
+
+49, A szerelők időbeosztást készítenek, amelyből kiderül, hogy melyik szerelő melyik műhelybe lesz beosztva az egyes napokon. Készítsen egy 'munkarend' nevű táblát! A tábla tartalmazza a munkanap dátumát (dátum), a szerelő azonosítóját (legfeljebb 5 jegyű egész) és a szerelőműhely azonosítóját (legfeljebb 5 jegyű egész)! A tábla elsődleges kulcsát a munkanap dátuma és a szerelő azonosítója alkossa! A szerelőazonosító hivatkozzon az 'sz_szerelo' táblára, a szerelőműhely azonosítója pedig az 'sz_szerelomuhely' táblára! A munkanap dátumának alapértelmezett értéke legyen a mindenkori aktuális dátum! Az elsődleges kulcs megszorítást nevezze el!
+CREATE TABLE munkarend
+(
+    datum DATE DEFAULT sysdate,
+    szerelo_azon NUMBER(5),
+    muhely_azon NUMBER(5),
+    constraint m_pk PRIMARY KEY(datum, szerelo_azon),
+    constraint m_sz_fk FOREIGN KEY(szerelo_azon) references sz_szerelo,
+    constraint m_m_fk FOREIGN KEY(muhely_azon) references sz_szerelomuhely
+);
+
+50, Listázza ki azon autók rendszámát, amelyeket szereltek már kevesebbért, mint valamelyik Suzuki márkájú autót! Egy rendszám csak egyszer szerepeljen az eredményben!
+SELECT rendszam
+    FROM SZERELO.SZ_AUTO a, SZERELO.SZ_SZERELES sz
+    WHERE a.azon = sz.auto_azon
+    AND sz.munkavegzes_ara < ANY
+    (
+        SELECT munkavegzes_ara
+            FROM SZERELO.SZ_AUTO a, SZERELO.SZ_SZERELES sz, SZERELO.SZ_AUTOTIPUS at
+            WHERE a.azon = sz.auto_azon AND a.tipus_azon = at.azon
+            AND at.marka = 'Suzuki'
+    )
+    GROUP BY rendszam;
+    
+51, Listázza ki az autómárkákat a típusaik megnevezésével együtt! A listában szerepeljenek azok az autómárkák is, amelyekhez nem tartozik egyetlen autótípus sem!
+SELECT am.nev, at.megnevezes
+    FROM SZERELO.SZ_AUTOTIPUS at RIGHT OUTER JOIN SZERELO.SZ_AUTOMARKA am
+    ON at.marka = am.nev;
+    
+52, Csökkentse a piros és fekete színű autók szerelései során megállapított munkavégzési árat az autó első vásárlási árának 10%-ával! Ha az első vásárlási ár nincs kitöltve, akkor maradjon meg az eredeti munkavégzési ár!
+UPDATE sz_szereles szer
+SET munkavegzes_ara = munkavegzes_ara - (
+SELECT nvl(elso_vasarlasi_ar,0)*0.1
+    FROM SZERELO.sz_auto at
+    WHERE at.azon = szer.auto_azon AND szin IN ('piros','fekete')
+);
+    
+53, Listázza ki a szerelők nevét, valamint hogy mely műhelyekben dolgoztak, és ott mennyi volt a havi fizetésük! A műhelyeket az azonosítójukkal adja meg! A listában szerepeljenek azok a szerelők is, akik sosem dolgoztak, vagy nincs megadva a fizetésük!
+SELECT sz.nev nev, d.muhely_azon muhelyazon, d.havi_fizetes fizetes
+    FROM szerelo.sz_dolgozik d RIGHT JOIN szerelo.sz_szerelo sz ON d.szerelo_azon = sz.azon;
