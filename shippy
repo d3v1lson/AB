@@ -1,0 +1,160 @@
+--Mennyi a max súlyterhelése az SC Nina nev? hajónak?
+select max_sulyterheles
+from hajo.s_hajo
+where nev='SC Nina';
+
+--Adjuk meg a kiköt?k helységneveit abc sorrendben!
+select helysegnev
+from hajo.s_helyseg
+order by helysegnev;
+
+--Adjuk meg azokat a megrendeléseket, melyekért több mint 1000000-t fizettek, 
+--és az igényelt kontéreszám nagyobb mint 5
+select megrendeles_id
+from hajo.s_megrendeles
+where fizetett_osszeg>1000000 and igenyelt_kontenerszam>5;
+
+--Adjuk meg egy oszlopban az országot és a helységnevet, vessz?vel elválasztva 
+select orszag||', '||helysegnev
+from hajo.s_helyseg;
+
+--Adjuk meg a az országot csupa kis és a helységnevet csupa nagy bet?vel
+select lower(orszag), upper(helysegnev)
+from hajo.s_helyseg;
+
+--Adjuk meg a hajók neveinek hosszát csökken? sorrendben.
+select length(nev) hossz
+from hajo.s_hajo
+order by hossz desc;
+
+--Adjuk meg az helységek lakosságát,ha nem tudjuk írjunk -1-t.
+select helysegnev, nvl(lakossag,-1)
+from hajo.s_helyseg;
+
+--Adjuk meg az országokat, de ahol az 'ország' szó van, azt cseréljük le 'királyság'-ra.
+select replace(orszag,'ország',' királyság')
+from hajo.s_orszag;
+
+--Adja meg az mennyi id?be teltek az utak!
+select ut_id,trunc(erkezesi_ido-indulasi_ido,2)
+from hajo.s_ut;
+
+--Adjuk meg a helység_id-ket ahol közepes kiköt? van.
+select helyseg
+from hajo.s_kikoto
+where leiras like '%kiköt?méret: közepes%';
+
+select helyseg
+from hajo.s_kikoto
+where substr(leiras,instr(leiras,'kiköt?méret')+length('kiköt?méret: '),length('közepes'))='közepes';
+
+--Adjuk meg azokat az országokat, melyek nevében pontosan 2 db a bet? van.
+select orszag
+from hajo.s_orszag
+where lower(orszag) like '%a%a%' and lower(orszag)not like '%a%a%a%';
+
+--Adjuk meg az ügyfelek Nevét, és születési dátumát(szépen).
+select vezeteknev||' '||keresztnev, to_char(szul_dat,'yyyy.mm.dd')
+from hajo.s_ugyfel;
+
+--Listázzuk ki a hajó típusokat az s_hajo tábálából, úgy hogy minden id csak egyszer jelenjen meg.
+select distinct hajo_tipus
+from hajo.s_hajo;
+
+--Hány hónap telt el az els? és utolsó indulás között?
+select round(months_between(max(indulasi_ido),min(indulasi_ido)),2)
+from hajo.s_ut;
+
+--Adjuk meg az utak átlagos idejét napokban.
+select round(avg(erkezesi_ido-indulasi_ido),3)
+from hajo.s_ut;
+
+--Adjuk meg az els? indulást.
+select to_char(min(indulasi_ido),'yyyy.mm.dd')
+from hajo.s_ut;
+
+--Adjuk meg földrészenként hány ország van.
+select foldresz, count(*)
+from hajo.s_orszag
+where foldresz is not null
+group by foldresz;
+
+--Adjuk meg a kiköt?khöz tartozó telefonok számát.
+select k.kikoto_id, count(kt.telefon)
+from hajo.s_kikoto k inner join hajo.s_kikoto_telefon kt on k.kikoto_id=kt.kikoto_id
+group by k.kikoto_id;
+
+select kikoto_id, count(telefon)
+from hajo.s_kikoto_telefon
+group by kikoto_id;
+
+--Adjuk meg hány hajótípusonként hány hajó van.
+select ht.nev, count(h.hajo_tipus)
+from hajo.s_hajo h inner join hajo.s_hajo_tipus ht on h.hajo_tipus=ht.hajo_tipus_id
+group by ht.nev;
+
+--Adjuk meg azokat a helységeket, ahol a terminálterület közepes és a kiköt?méret nagy.
+select h.helysegnev
+from hajo.s_kikoto k inner join hajo.s_helyseg h on k.helyseg=h.helyseg_id
+where k.leiras like 'terminálterület: közepes%kiköt?méret: nagy,%';
+
+--Adjuk meg azokat a hajókat, melyek valamely hónap 18.-án indultak.
+select distinct h.nev
+from hajo.s_hajo h inner join hajo.s_ut u on h.hajo_id=u.hajo
+where to_char(u.indulasi_ido,'dd')='18'; --where extract(day from u.indulasi_ido)=18
+
+--Adjuk meg azt a hajót/hajókat, melyek 2021.09.28.-án indult/indultak.
+select h.nev
+from hajo.s_hajo h inner join hajo.s_ut u on h.hajo_id=u.hajo
+where u.indulasi_ido like to_date('2021.09.28','yyyy.mm.dd');
+
+--note
+select to_char(indulasi_ido,'yyyy.mm.dd hh24:mi:ss')
+from hajo.s_ut;
+
+--Adjuk meg melyik hajótípusból van több mint 2, és mennyi.
+select ht.nev, count(h.hajo_tipus)szam
+from hajo.s_hajo h inner join hajo.s_hajo_tipus ht on h.hajo_tipus=ht.hajo_tipus_id
+group by ht.nev
+having count(h.hajo_tipus)>2;
+
+--Adjuk meg azokat a hajókat, amelyek más hónapban érkeztek, mint indultak.
+select h.nev
+from hajo.s_hajo h inner join hajo.s_ut u on h.hajo_id=u.hajo
+where extract(month from indulasi_ido)not like extract(month from erkezesi_ido);
+
+--Bonusz
+--Adjuk meg azokat az ügyfeleket, akik 40 évnél fiatalabbak
+select vezeteknev||' '||keresztnev, to_char(szul_dat,'yyyy.mm.dd')
+from hajo.s_ugyfel
+where (months_between(sysdate,szul_dat)/12)<40;
+
+--Adjuk meg a SC Nina útjait, honnan indul, hova megy, mikor.
+select *
+from hajo.s_ut
+where hajo=(select hajo_id from hajo.s_hajo where nev='SC Nina');
+--note megegyezik
+select u.*
+from hajo.s_ut u inner join hajo.s_hajo h on u.hajo=h.hajo_id
+where h.nev='SC Nina';
+
+--Adjuk meg az egyiptomi ügyfeleket.
+select vezeteknev||' '||keresztnev
+from hajo.s_ugyfel
+where helyseg in(select helyseg_id from hajo.s_helyseg where orszag='Egyiptom');
+
+--Adjuk meg azokat az utakat, amelyek kicsi terminálterület? kiköt?b?l indulnak.
+select ut_id
+from hajo.s_ut
+where indulasi_kikoto in(select kikoto_id from hajo.s_kikoto where leiras like 'terminálterület: kicsi,%');
+
+--Plusz feladatok
+--Adjuk meg azokat az ügyfeleket, akinek valamely megrendelése Spanyolországi 
+--kiköt?be futott be, vagy nem Európai országból indult
+select vezeteknev||' '||keresztnev
+from hajo.s_ugyfel u inner join hajo.s_megrendeles m on u.ugyfel_id=m.ugyfel
+left join hajo.s_kikoto k on k.kikoto_id=m.indulasi_kikoto 
+inner join hajo.s_helyseg h on k.helyseg=h.helyseg_id
+inner join hajo.s_orszag o on h.orszag=o.orszag
+where ;--Mi a fasz
+
