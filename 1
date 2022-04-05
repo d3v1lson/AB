@@ -1,0 +1,131 @@
+--Listázza ki az 1940 és 60 között született tagok nevét,
+--amennyiben van megadva nekik telefonszám. (Ha email is van megadva, az is érvényes).
+--A lekérdezést rendezze születési dátum szerint növekvő sorrendbe
+
+select vezeteknev||' '||keresztnev as nev--, to_char(szul_dat, 'yyyy.mm.dd') as szuletesi_datum, email, telefon
+from ship.s_ugyfel
+where extract(year from szul_dat) between 1940 and 1960
+and
+telefon is not null
+order by szul_dat;
+
+
+select vezeteknev||' '||keresztnev as nev--, to_char(szul_dat, 'yyyy.mm.dd') as szuletesi_datum, email, telefon
+from ship.s_ugyfel
+where to_char(szul_dat, 'yyyy') between 1940 and 1960
+and
+telefon is not null
+order by szul_dat;
+
+
+--Keresse meg azokat az embereket, akiknek nevében pontosan 3 db a betű van!
+select vezeteknev||' '||keresztnev as nev
+from ship.s_ugyfel
+where lower(vezeteknev||' '||keresztnev) like '%a%a%a%' and lower(vezeteknev||' '||keresztnev) not like '%a%a%a%a%';
+
+
+--Írassuk ki a leghosszabb helységnevet
+select helysegnev, length(helysegnev) hossz
+from ship.s_helyseg
+order by hossz desc
+fetch first rows only;
+
+select helysegnev, length(helysegnev) hossz
+from ship.s_helyseg
+where length(helysegnev) like (
+    select max(length(helysegnev))
+    from ship.s_helyseg);
+
+
+--Monogrammonként hány ügyfél van?
+select upper(substr(vezeteknev, 0, 1)||substr(keresztnev, 0, 1)) as monogramm, count(*) as darab
+from ship.s_ugyfel
+group by upper(substr(vezeteknev, 0, 1)||substr(keresztnev, 0, 1))
+order by upper(substr(vezeteknev, 0, 1)||substr(keresztnev, 0, 1));
+
+
+--Melyik országban,helységben és földrészen él Tal El Farah	Mohamed?
+select ship.s_orszag.orszag, helysegnev, foldresz
+from ship.s_ugyfel
+    inner join ship.s_helyseg
+        on ship.s_ugyfel.helyseg = ship.s_helyseg.helyseg_id
+    inner join ship.s_orszag
+        on ship.s_helyseg.orszag = ship.s_orszag.orszag
+
+where vezeteknev = 'Tal El Farah' and keresztnev = 'Mohamed';
+
+
+--Melyik hajóknak nagyobb az összrakománysúlya a megtett utakon, mint 200?
+select ship.s_hajo.nev, sum(ship.s_hozzarendel.rakomanysuly)
+from ship.s_hajo
+    inner join ship.s_ut
+        on ship.s_hajo.hajo_id = ship.s_ut.hajo
+    inner join ship.s_szallit
+        on ship.s_ut.ut_id = ship.s_szallit.ut
+    inner join ship.s_hozzarendel
+        on ship.s_szallit.megrendeles = ship.s_hozzarendel.megrendeles
+
+group by ship.s_hajo.nev
+having sum(ship.s_hozzarendel.rakomanysuly) > 5400;
+
+
+--Írjuk ki azokat a hajókat és típusukat, amelyeknek az elmúlt egy évben legalább 8 útja volt
+select ship.s_hajo.nev, count(*), ship.s_hajo_tipus.nev
+from ship.s_hajo
+    inner join ship.s_hajo_tipus
+        on ship.s_hajo.hajo_tipus = ship.s_hajo_tipus.hajo_tipus_id
+    inner join ship.s_ut
+        on ship.s_hajo.hajo_id = ship.s_ut.hajo
+where months_between(sysdate, erkezesi_ido)/12 <= 1
+group by ship.s_hajo.nev, ship.s_hajo_tipus.nev;
+        
+
+--Melyik országba hány hajó érkezett?
+select ship.s_helyseg.orszag, count(*)
+from ship.s_ut
+    inner join ship.s_kikoto
+        on ship.s_ut.erkezesi_kikoto = ship.s_kikoto.kikoto_id
+    inner join ship.s_helyseg
+        on ship.s_kikoto.helyseg = ship.s_helyseg.helyseg_id
+        
+group by ship.s_helyseg.orszag;
+        
+
+--Írassuk ki az összes utat, ami közepes szárazdokkal és kicsi vasúti kapcsolattal rendelkező kikötőbe futott be
+
+select ship.s_ut.*, ship.s_kikoto.leiras
+from ship.s_ut
+    inner join ship.s_kikoto
+        on ship.s_ut.erkezesi_kikoto = ship.s_kikoto.kikoto_id
+where leiras like '%vasúti kapcsolat: kicsi%szárazdokk: közepes%'
+;
+
+--Írassuk ki azokat a helységeket, ahol több telefonszám tartozik a kikötőhöz
+select ship.s_helyseg.helysegnev, count(ship.s_kikoto_telefon.telefon)
+from ship.s_helyseg
+    inner join ship.s_kikoto
+        on ship.s_helyseg.helyseg_id = ship.s_kikoto.helyseg
+    inner join ship.s_kikoto_telefon
+        on ship.s_kikoto.kikoto_id = ship.s_kikoto_telefon.kikoto_id
+    
+group by ship.s_helyseg.helysegnev
+having count(ship.s_kikoto_telefon.telefon)>1
+order by count(ship.s_kikoto_telefon.telefon);
+
+
+
+--Írassuk ki azon ügyfelek nevét, akiknek valamely megrendelésének ára magasabb a megrendelések átlagáránál
+select distinct ship.s_ugyfel.ugyfel_id, keresztnev||' '||vezeteknev as nev, ship.s_megrendeles.fizetett_osszeg
+from ship.s_ugyfel
+    inner join ship.s_megrendeles
+        on ship.s_ugyfel.ugyfel_id = ship.s_megrendeles.ugyfel
+group by ship.s_ugyfel.ugyfel_id, keresztnev||' '||vezeteknev, ship.s_megrendeles.fizetett_osszeg
+having ship.s_megrendeles.fizetett_osszeg > (
+    select avg(fizetett_osszeg)
+    from ship.s_megrendeles)
+order by keresztnev||' '||vezeteknev;
+
+--Írassuk ki azon hajók adatait, amelyeknek neve pontosan egy g betűt és 0 h betűt tartalmaz
+select *
+from ship.s_hajo
+where nev like '%g%' and nev not like '%h%';
